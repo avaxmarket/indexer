@@ -66,7 +66,7 @@ const nextTick = (block_number: number) => {
                                             ?, ?, ?
                                         )`, [
                                             transaction.hash, inscription.amt, transaction.to.toLocaleLowerCase(),
-                                            0, false, AVAL_TICK
+                                            0, 0/* false */, AVAL_TICK
                                         ])
                                     }
                                 }
@@ -84,7 +84,10 @@ const nextTick = (block_number: number) => {
                                         transaction.from, transaction.to, JSON.stringify(inscription.vin), 
                                         JSON.stringify(inscription.vout), transaction.hash, inscription.tick,
                                     ])
+                                    // TODO check send value ...
+                                    // TODO check vout addr ...
                                     if(inscription.vout.length <= ASC20_V1_TRANSFER_MAX){
+                                        let new_vout_index = 0
                                         for await (const output of inscription.vout) {
                                             pool.execute(`INERT INTO user_transfer (
                                                 from, to, value,
@@ -98,6 +101,21 @@ const nextTick = (block_number: number) => {
                                                 transaction.from, output.scriptPubKey.addr, output.amt,
                                                 block_data.timestamp, transaction.hash, block_number,
                                             ])
+                                            pool.execute(`INERT INTO utxo (
+                                                txid, value, owner,
+                                                index, confirmed, tick
+                                            ) VALUES (
+                                                ?, ?, ?,
+                                                ?, ?, ?
+                                            )`, [
+                                                transaction.hash, output.amt, output.scriptPubKey.addr,
+                                                new_vout_index, 1/* true */, AVAL_TICK
+                                            ])
+                                            new_vout_index++
+                                        }
+
+                                        for await (const input of inscription.vin) {
+                                            pool.execute(`UPDATE utxos SET confirmed = ? WHERE txid = ? AND index = ?`, [1/* true */, input.txid, input.txid])
                                         }
                                     }
                                 }
