@@ -1,3 +1,12 @@
+## What is ASC-20?
+
+The ASC-20 inscription standard is unique to the Avalanche blockchain which standardizes the token protocol for inscriptions. On the Avalanche blockchain, anyone has the ability to deploy, mint, and trade ASC-20 inscriptions.
+
+## Links
+
+Market: https://avaxmarket.xyz \
+Docs: https://docs.avaxmarket.xyz
+
 ## Config .env
 MYSQL_HOST=127.0.0.1 \
 MYSQL_USER=user \
@@ -15,6 +24,6 @@ MYSQL_PW=pw
 * The default precision is 8
 * The maximum deployment value is 9223372036854775807
 
-## more
+## More
 
 The index currently only supports aval
