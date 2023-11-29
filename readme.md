@@ -1,6 +1,6 @@
-## config .env
-MYSQL_HOST=127.0.0.1
-MYSQL_USER=user
+## Config .env
+MYSQL_HOST=127.0.0.1 \
+MYSQL_USER=user \
 MYSQL_PW=pw
 
 
