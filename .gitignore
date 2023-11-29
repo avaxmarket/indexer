@@ -1,0 +1,5 @@
+rpc.md
+db.md
+*.go
+node_modules
+.env
