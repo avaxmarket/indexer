@@ -3,6 +3,10 @@
     "dotenv": "^16.3.1",
     "mysql2": "^3.6.5"
   },
+  "scripts": {
+    "test": "ts-node tests/index.ts",
+    "start": "ts-node src/avax_indexer.ts"
+  },
   "devDependencies": {
     "@types/mysql2": "github:types/mysql2",
     "@types/node": "^20.10.0"

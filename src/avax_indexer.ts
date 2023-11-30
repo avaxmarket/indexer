@@ -2,7 +2,8 @@ import * as dotenv from "dotenv"
 import * as mysql from "mysql2"
 import { db_interface_block_json, scan_json_type } from "./types"
 import { hex_to_string } from "./utils/hex"
-import { ASC20_V1_TRANSFER_MAX, AVAL_INPUT_HEX, AVAL_TICK } from "./constant"
+import { ASC20_V1_TRANSFER_MAX, AVAL_INPUT_HEX, AVAL_TICK, PRE_BLOCK_NUMBER } from "./constant"
+import { continuous_block } from "./utils/continuous_block"
 
 dotenv.config()
 
@@ -11,34 +12,50 @@ const pool = mysql.createPool({
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PW,
     database: 'aval',
-    waitForConnections: true,
+    waitForConnections: false,
     connectionLimit: 10,
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0
 })
 
-let block_number = 38317488
+let block_number = 37932982
 
-const nextTick = (block_number: number) => {
+const nextBlock = (start_block_number: number, end_block_number: number) => {
     pool.getConnection((err, conn) => {
-        pool.query({ 
-            sql: `select block_data from block_json WHERE block_number = ?`,
+        pool.query({
+            sql: `select block_data from block_json WHERE block_number >= ? AND block_number <= ?`,
             rowsAsArray: true,
-        }, 
-        [block_number],
-        (err, rows: any) => {
-            let is_begin = false
+        },
+        [start_block_number, end_block_number],
+        (err, db_rustlt: any) => {
+            if(err){
+                console.log('err--->', err)
+                pool.end()
+                // TODO next
+                return
+            }
+            const block_number_arr = db_rustlt.result.map((rows: any) => {
+                const block_data = rows[0] as db_interface_block_json
+                return parseInt(block_data.number, 16)
+            })
+            console.log('block_number_arr::', block_number_arr)
+            const { last_index: block_last_index, last_number: block_last_number } = continuous_block(block_number_arr)
+            // TODO block_last_number live
+
+            const able_db_rustlt = db_rustlt.slice(0, block_last_index + 1)
+            
             conn.beginTransaction(async (begin_err) => {
                 if(!begin_err){
                     console.log('begin error::', begin_err)
+                    pool.end()
+                    // TODO next
                     return
                 }
-                is_begin = true
-                rows.map(async (e: any) => {
+                able_db_rustlt.map(async (rows: any) => {
                     const prefix_hex = '0x646174613a2c'
                     const prefix_hex_len = prefix_hex.length
-                    const block_data = e[0] as db_interface_block_json
+                    const block_data = rows[0] as db_interface_block_json
                     const transaction_sort_list = block_data.result.sort((a, b) => parseInt(a.transactionIndex) - parseInt(b.transactionIndex))
                 
                     for await (const transaction of transaction_sort_list) {
@@ -124,15 +141,10 @@ const nextTick = (block_number: number) => {
                     }
                 })
             })
-            if(is_begin){
-                conn.commit()
-                // todo set new block number
-                nextTick(block_number + 1)
-            }else{
-                setTimeout(() => {
-                    nextTick(block_number)
-                }, 2e3)
-            }
+            
+            conn.commit()
+            // todo set new block number
+            nextBlock(block_last_number + 1, PRE_BLOCK_NUMBER)
         })
     })
 }
@@ -141,4 +153,4 @@ const nextTick = (block_number: number) => {
 // pool.end()
 
 // start
-nextTick(block_number)
+nextBlock(block_number, block_number + PRE_BLOCK_NUMBER)

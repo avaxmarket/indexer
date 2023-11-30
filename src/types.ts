@@ -1,6 +1,7 @@
 export interface db_interface_block_json {
     id: string;
     timestamp: string;
+    number: string;
     result: {
         from: string;
         to: string;
