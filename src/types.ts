@@ -48,3 +48,13 @@ export interface db_tick_info {
     lim: number;
     deploy_time: number;
 }
+export interface db_utxo_info {
+    user_id: number;
+    txid: string;
+    value: string;
+    owner: string;
+    index: number;
+    confirmed: number;
+    tick: string;
+    vin_hash: string;
+}

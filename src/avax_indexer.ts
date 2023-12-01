@@ -1,11 +1,12 @@
 import { db_interface_block_json, scan_json_type } from "./types"
 import { hex_to_string } from "./utils/hex"
-import { ASC20_V1_TRANSFER_MAX, AVAL_INPUT_HEX, AVAL_LIM, AVAL_SUPPLY, AVAL_TICK, AVAX_PROTOCOL, AVAX_PROTOCOL_PREFIX_HEX, PRE_BLOCK_NUMBER } from "./constant"
+import { ASC20_V1_TRANSFER_MAX, AVAL_INPUT_HEX, AVAL_LIM, AVAL_SUPPLY, AVAL_TICK, AVAX_PROTOCOL, AVAX_PROTOCOL_PREFIX_HEX, DEC, PRE_BLOCK_NUMBER } from "./constant"
 import { continuous_block } from "./utils/continuous_block"
 import { BigNumber } from "bignumber.js"
 import { get_indexer_last_block, set_indexer_last_block } from "./utils/io"
 import { pool } from "./db/pool"
 import { get_avax_insc_tick_info } from "./db/select/tick"
+import { get_avax_insc_utxo_info } from "./db/select/utxo"
 
 const nextBlock = (start_block_number: number, end_block_number: number) => {
     pool.getConnection((err, conn) => {
@@ -93,28 +94,57 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
                                     inscription.op === 'transfer' &&
                                     inscription.tick === AVAL_TICK
                                 ) {
-                                    let isTransfer = false
-
-                                    // TODO check send value ...
-                                    // TODO check vout addr ...
+                                    let isTransfer = true
+                                    let inputValue = new BigNumber(0)
+                                    let outputValue = new BigNumber(0)
+                                    for await (const input of inscription.vin) {
+                                        const utxo = await get_avax_insc_utxo_info(input.txid, parseInt(input.vout))
+                                        if(utxo.owner.toLocaleLowerCase() !== from){
+                                            isTransfer = false
+                                            continue
+                                        }
+                                        inputValue.plus(
+                                            new BigNumber(utxo.value).multipliedBy(DEC)
+                                        )
+                                    }
+                                    for (const output of inscription.vout) {
+                                        outputValue.plus(
+                                            new BigNumber(output.amt).multipliedBy(DEC)
+                                        )
+                                    }
+                                    if(inputValue.isLessThan(outputValue)){
+                                        isTransfer = false
+                                    }
+                                    const excess_funds = inputValue.minus(outputValue).dividedBy(DEC).toNumber()
                                     
-                                    pool.execute(`INERT INTO transfer_history (
+                                    pool.execute(`INERT INTO user_transfer (
                                         \`from\`, \`to\`, vins,
-                                        vouts, hash, tick
+                                        vouts, hash, tick,
+                                        success, block_number, time
                                     ) VALUES (
+                                        ?, ?, ?,
                                         ?, ?, ?,
                                         ?, ?, ?
                                     )`, [
                                         from, transaction.to, JSON.stringify(inscription.vin),
                                         JSON.stringify(inscription.vout), transaction.hash, inscription.tick,
+                                        isTransfer ? 1 : 0, current_block_number, block_data.timestamp
                                     ])
                                     if (
                                         inscription.vout.length <= ASC20_V1_TRANSFER_MAX &&
                                         isTransfer
                                     ) {
+                                        let run_vout = inscription.vout
+                                        if(excess_funds > 0){
+                                            run_vout = [...run_vout, {
+                                                amt: excess_funds.toString(),
+                                                scriptPubKey: {
+                                                    addr: transaction.from
+                                                }
+                                            }]
+                                        }
                                         let new_vout_index = 0
-                                        // TODO Automatically return excess funds
-                                        for await (const output of inscription.vout) {
+                                        for await (const output of run_vout) {
                                             pool.execute(`INERT INTO user_transfer (
                                                 \`from\`, \`to\`, value,
                                                 time, hash, block_number,
@@ -126,6 +156,7 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
                                             )`, [
                                                 from, output.scriptPubKey.addr, output.amt,
                                                 block_data.timestamp, transaction.hash, current_block_number,
+                                                inscription.tick
                                             ])
                                             pool.execute(`INERT INTO utxo (
                                                 txid, value, owner,
@@ -135,7 +166,7 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
                                                 ?, ?, ?
                                             )`, [
                                                 transaction.hash, output.amt, output.scriptPubKey.addr,
-                                                new_vout_index, 1/* true */, AVAL_TICK
+                                                new_vout_index, 0/* false */, AVAL_TICK
                                             ])
                                             new_vout_index++
                                         }
@@ -167,9 +198,6 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
 
     })
 }
-
-// TODO handle pool error
-// pool.end()
 
 // start
 const main = async () => {

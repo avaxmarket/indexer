@@ -1,6 +1,7 @@
 import { AVAL_LIM, AVAL_SUPPLY, AVAL_TICK } from "../src/constant";
 import { pool } from "../src/db/pool";
 import { get_avax_insc_tick_info } from "../src/db/select/tick";
+import { get_avax_insc_utxo_info } from "../src/db/select/utxo";
 import { db_tick_info } from "../src/types";
 
 
@@ -12,6 +13,8 @@ const run = async () => {
     console.log("select_db.test 1:3:", tick_info2.max === AVAL_SUPPLY)
     console.log("select_db.test 1:4:", tick_info2.tick === AVAL_TICK)
     console.log("select_db.test 1:5:", tick_info2.lim === Number(AVAL_LIM))
+    // const utxo = await get_avax_insc_utxo_info("22", 0)
+    // console.log('utxo::', utxo)
     pool.query(`SELECT amt, max, tick FROM avax_tick WHERE tick = ?`, [AVAL_TICK], (err, result) => {
         if(err){
             return console.log('select_db.test ERROR!!!!!!')
