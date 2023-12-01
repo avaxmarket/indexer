@@ -66,7 +66,7 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
                                 transaction.input === AVAL_INPUT_HEX
                             ) {
                                 total_mint = total_mint.plus(AVAL_LIM)
-                                await pool.execute(`INSERT INTO utxo (
+                                await pool.execute(`INSERT IGNORE INTO utxo (
                                                 txid, value, owner,
                                                 \`index\`, confirmed, tick
                                             ) VALUES (
@@ -105,7 +105,7 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
                             }
                             const excess_funds = inputValue.minus(outputValue).dividedBy(DEC).toNumber()
     
-                            pool.execute(`INERT INTO user_transfer (
+                            pool.execute(`INSERT IGNORE INTO user_transfer (
                                             \`from\`, \`to\`, vins,
                                             vouts, hash, tick,
                                             success, block_number, time
@@ -133,7 +133,7 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
                                 }
                                 let new_vout_index = 0
                                 for await (const output of run_vout) {
-                                    pool.execute(`INERT INTO user_transfer (
+                                    pool.execute(`INSERT IGNORE INTO user_transfer (
                                                     \`from\`, \`to\`, value,
                                                     time, hash, block_number,
                                                     tick
@@ -146,7 +146,7 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
                                         block_data.timestamp, transaction.hash, current_block_number,
                                         inscription.tick
                                     ])
-                                    pool.execute(`INSERT INTO utxo (
+                                    pool.execute(`INSERT IGNORE INTO utxo (
                                                     txid, value, owner,
                                                     \`index\`, confirmed, tick
                                                 ) VALUES (
