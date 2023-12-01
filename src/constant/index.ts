@@ -10,4 +10,4 @@ export const PRE_BLOCK_NUMBER = 1
 // export const PRE_BLOCK_NUMBER = 1000
 export const DEC = 1e8
 
-export const INDEXER_SCAN_LAST_BLOCK_FILEPATH = "./indexer_scan_last_block.amb"
+export const INDEXER_SCAN_LAST_BLOCK_FILEPATH = "./indexer_scan_last_block.avb"

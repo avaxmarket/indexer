@@ -3,3 +3,4 @@ db.md
 *.go
 node_modules
 .env
+.avb
