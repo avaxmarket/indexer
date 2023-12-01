@@ -37,3 +37,14 @@ export type scan_json_type = {
         };
     }[];
 }
+export interface db_tick_info {
+    amt: number;
+    max: number;
+    tick: string;
+    holder: number;
+    creator: string;
+    json: string;
+    last_time: number;
+    lim: number;
+    deploy_time: number;
+}
