@@ -2,7 +2,7 @@ export interface db_interface_block_json {
     id: string;
     timestamp: string;
     number: string;
-    result: {
+    transactions: {
         from: string;
         to: string;
         hash: string;

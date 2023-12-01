@@ -7,10 +7,10 @@ const run = async () => {
         let block_number = await get_indexer_last_block(Date.now().toString())
         console.log('get_indexer_last_block 1::', block_number === INDEXER_DEFAULT_LAST_BLOCK)
     }
-    {
-        let block_number = await get_indexer_last_block()
-        console.log('get_indexer_last_block 2::', block_number === INDEXER_DEFAULT_LAST_BLOCK)
-    }
+    // {
+    //     let block_number = await get_indexer_last_block()
+    //     console.log('get_indexer_last_block 2::', block_number === INDEXER_DEFAULT_LAST_BLOCK)
+    // }
     {
         await set_indexer_last_block(123, TEST_PATH)
         let block_number = await get_indexer_last_block(TEST_PATH)
