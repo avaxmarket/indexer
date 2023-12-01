@@ -8,7 +8,6 @@ import { pool } from "./db/pool"
 import { get_avax_insc_tick_info } from "./db/select/tick"
 import { get_avax_insc_utxo_info } from "./db/select/utxo"
 import { get_avax_insc_blocks_info } from "./db/select/block"
-import { PoolConnection } from "mysql2"
 
 const nextBlock = async (start_block_number: number, end_block_number: number) => {
     const conn = await pool.getConnection()
@@ -24,14 +23,14 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
     // console.log('block_number_arr::', block_number_arr)
     const { last_index: block_last_index, last_number: block_last_number } = continuous_block(block_number_arr)
 
-    const able_db_rustlt = db_rustlt.slice(0, block_last_index + 1)
+    const able_db_result = db_rustlt.slice(0, block_last_index + 1)
 
     // TODO catch
     const { amt } = await get_avax_insc_tick_info()
     let total_mint = BigNumber(amt)
     console.log("total_mint::", amt)
     try {
-        for await (const row of able_db_rustlt) {
+        for await (const row of able_db_result) {
             const prefix_hex_len = AVAX_PROTOCOL_PREFIX_HEX.length
             const block_data = row.block_data.result
             const transaction_sort_list = block_data.transactions.sort((a, b) => parseInt(a.transactionIndex, 16) - parseInt(b.transactionIndex, 16))
@@ -40,18 +39,21 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
     
             for await (const transaction of transaction_sort_list) {
                 const from = transaction.from.toLocaleLowerCase()
-                const to = transaction.to.toLocaleLowerCase()
+                const to = transaction.to ? transaction.to.toLocaleLowerCase() : ''
     
                 await conn.beginTransaction()
     
-                if (transaction.input.substring(0, prefix_hex_len) === AVAX_PROTOCOL_PREFIX_HEX) {
+                if (
+                    transaction.input.substring(0, prefix_hex_len) === AVAX_PROTOCOL_PREFIX_HEX &&
+                    to
+                ) {
                     // TODO already hesh
                     const already_hash = false
                     if (already_hash) {
                         continue
                     }
                     const input_string = hex_to_string(transaction.input.substring(prefix_hex_len, transaction.input.length))
-                    console.log('input_string::', input_string)
+                    // console.log('input_string::', input_string)
                     let inscription: scan_json_type | undefined
                     try {
                         inscription = JSON.parse(input_string)
@@ -59,18 +61,15 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
                     }
                     if (inscription?.p === AVAX_PROTOCOL) {
                         if (inscription.op === 'mint') {
-                            // TODO other tick
                             if (
                                 total_mint.isLessThan(AVAL_SUPPLY) &&
                                 transaction.input === AVAL_INPUT_HEX
                             ) {
-                                total_mint.plus(AVAL_LIM)
-                                console.log('----INERT INTO utxo----')
-                                await pool.execute(`INERT INTO utxo (
+                                total_mint = total_mint.plus(AVAL_LIM)
+                                await pool.execute(`INSERT INTO utxo (
                                                 txid, value, owner,
                                                 \`index\`, confirmed, tick
                                             ) VALUES (
-                                                ?, ?,
                                                 ?, ?, ?,
                                                 ?, ?, ?
                                             )`, [
@@ -147,7 +146,7 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
                                         block_data.timestamp, transaction.hash, current_block_number,
                                         inscription.tick
                                     ])
-                                    pool.execute(`INERT INTO utxo (
+                                    pool.execute(`INSERT INTO utxo (
                                                     txid, value, owner,
                                                     \`index\`, confirmed, tick
                                                 ) VALUES (
@@ -167,9 +166,9 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
                         }
                     }
                 }
+                // console.log("::total_mint::", total_mint)
                 if (total_mint.isGreaterThan(0)) {
-                    // pool.execute(`UPDATE avax_tick SET amt = amt + ? WHERE tick = ?`, [total_mint, AVAL_TICK])
-                    pool.execute(`UPDATE avax_tick SET amt = ? WHERE tick = ?`, [total_mint, AVAL_TICK])
+                    pool.execute(`UPDATE avax_tick SET amt = ? WHERE tick = ?`, [total_mint.toString(), AVAL_TICK])
                 }
                 // commit success
                 await conn.commit()
@@ -178,18 +177,17 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
             }
             await set_indexer_last_block(block_last_number + 1)
         }
-        if (able_db_rustlt.length === 0) {
-            console.log('able_db_rustlt.length === 0')
+        if (able_db_result.length === 0) {
+            console.log('able_db_result.length === 0')
             setTimeout(() => {
                 nextBlock(start_block_number, end_block_number)
-            }, 3000)
+            }, 300)
         } else {
-            console.log('----run next---')
             await main()
         }
     } catch (error) {
         console.log('db_rustlt::', error, start_block_number)
-        console.log('able_db_rustlt::', able_db_rustlt)
+        console.log('able_db_result::', able_db_result)
     }
 }
 
@@ -198,5 +196,7 @@ const main = async () => {
     let block_number = await get_indexer_last_block()
     console.log("start block number::", block_number)
     await nextBlock(block_number, block_number + PRE_BLOCK_NUMBER)
+    // let block_number = 38094867
+    // await nextBlock(block_number, block_number)
 }
 main()
