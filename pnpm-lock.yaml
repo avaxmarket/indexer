@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  bignumber.js:
+    specifier: ^9.1.2
+    version: 9.1.2
   dotenv:
     specifier: ^16.3.1
     version: 16.3.1
@@ -27,6 +30,10 @@ packages:
     dependencies:
       undici-types: 5.26.5
     dev: true
+
+  /bignumber.js@9.1.2:
+    resolution: {integrity: sha512-2/mKyZH9K85bzOEfhXDBFZTGd1CTs+5IHpeFQo9luiBG7hghdC851Pj2WAhb6E3R6b9tZj/XKhbg4fum+Kepug==}
+    dev: false
 
   /denque@2.1.0:
     resolution: {integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==}
@@ -107,8 +114,8 @@ packages:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
     dev: true
 
-  github.com/types/mysql/c26b1bc2bac17010081455e3127a90fb2eafcec9:
-    resolution: {tarball: https://codeload.github.com/types/mysql/tar.gz/c26b1bc2bac17010081455e3127a90fb2eafcec9}
+  git@github.com+types/mysql/c26b1bc2bac17010081455e3127a90fb2eafcec9:
+    resolution: {commit: c26b1bc2bac17010081455e3127a90fb2eafcec9, repo: git@github.com:types/mysql.git, type: git}
     name: '@types/mysql'
     version: 2.0.0
     dev: true
@@ -118,5 +125,5 @@ packages:
     name: '@types/mysql2'
     version: 1.0.0
     dependencies:
-      '@types/mysql': github.com/types/mysql/c26b1bc2bac17010081455e3127a90fb2eafcec9
+      '@types/mysql': git@github.com+types/mysql/c26b1bc2bac17010081455e3127a90fb2eafcec9
     dev: true

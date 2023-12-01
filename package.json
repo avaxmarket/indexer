@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "bignumber.js": "^9.1.2",
     "dotenv": "^16.3.1",
     "mysql2": "^3.6.5"
   },

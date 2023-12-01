@@ -2,8 +2,10 @@ import * as dotenv from "dotenv"
 import * as mysql from "mysql2"
 import { db_interface_block_json, scan_json_type } from "./types"
 import { hex_to_string } from "./utils/hex"
-import { ASC20_V1_TRANSFER_MAX, AVAL_INPUT_HEX, AVAL_TICK, PRE_BLOCK_NUMBER } from "./constant"
+import { ASC20_V1_TRANSFER_MAX, AVAL_INPUT_HEX, AVAL_SUPPLY, AVAL_TICK, AVAX_PROTOCOL, AVAX_PROTOCOL_PREFIX_HEX, PRE_BLOCK_NUMBER } from "./constant"
 import { continuous_block } from "./utils/continuous_block"
+import { BigNumber } from "bignumber.js"
+import { get_indexer_last_block, set_indexer_last_block } from "./utils/io"
 
 dotenv.config()
 
@@ -19,7 +21,6 @@ const pool = mysql.createPool({
     keepAliveInitialDelay: 0
 })
 
-let block_number = 37932982
 
 const nextBlock = (start_block_number: number, end_block_number: number) => {
     pool.getConnection((err, conn) => {
@@ -41,7 +42,6 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
             })
             console.log('block_number_arr::', block_number_arr)
             const { last_index: block_last_index, last_number: block_last_number } = continuous_block(block_number_arr)
-            // TODO block_last_number live
 
             const able_db_rustlt = db_rustlt.slice(0, block_last_index + 1)
             
@@ -52,14 +52,17 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
                     // TODO next
                     return
                 }
+                // TODO
+                let total_mint = BigNumber(0)
                 able_db_rustlt.map(async (rows: any) => {
-                    const prefix_hex = '0x646174613a2c'
-                    const prefix_hex_len = prefix_hex.length
+                    const prefix_hex_len = AVAX_PROTOCOL_PREFIX_HEX.length
                     const block_data = rows[0] as db_interface_block_json
-                    const transaction_sort_list = block_data.result.sort((a, b) => parseInt(a.transactionIndex) - parseInt(b.transactionIndex))
+                    const transaction_sort_list = block_data.result.sort((a, b) => parseInt(a.transactionIndex, 16) - parseInt(b.transactionIndex, 16))
                 
+                    const current_block_number = parseInt(block_data.number, 16)
+
                     for await (const transaction of transaction_sort_list) {
-                        if(transaction.input.substring(0, prefix_hex_len) === prefix_hex){
+                        if(transaction.input.substring(0, prefix_hex_len) === AVAX_PROTOCOL_PREFIX_HEX){
                             // TODO already hesh
                             const already_hash = false
                             if(already_hash){
@@ -67,14 +70,16 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
                             }
                             const input_string = hex_to_string(transaction.input.substring(prefix_hex_len, transaction.input.length))
                             const inscription: scan_json_type = JSON.parse(input_string)
-                            if(inscription.p === 'asc-20'){
+                            if(inscription.p === AVAX_PROTOCOL){
                                 if(inscription.op === 'mint'){
                                     if(
                                         // inscription.amt === "100000000" &&
                                         // inscription.tick === "aval" &&
-                                        block_number >= 37942008 &&
+                                        // block_number >= 37942008 &&
+                                        total_mint.isLessThanOrEqualTo(AVAL_SUPPLY) &&
                                         transaction.input === AVAL_INPUT_HEX
                                     ) {
+                                        total_mint.plus("100000000")
                                         pool.execute(`INERT INTO utxo (
                                             txid, value, owner,
                                             index, confirmed, tick
@@ -116,7 +121,7 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
                                                 ?
                                             )`, [
                                                 transaction.from, output.scriptPubKey.addr, output.amt,
-                                                block_data.timestamp, transaction.hash, block_number,
+                                                block_data.timestamp, transaction.hash, current_block_number,
                                             ])
                                             pool.execute(`INERT INTO utxo (
                                                 txid, value, owner,
@@ -142,9 +147,12 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
                 })
             })
             
+            // TODO commit success
             conn.commit()
-            // todo set new block number
+            // loop:: set new block number
             nextBlock(block_last_number + 1, PRE_BLOCK_NUMBER)
+            // block_last_number live
+            set_indexer_last_block(block_last_number)
         })
     })
 }
@@ -153,4 +161,8 @@ const nextBlock = (start_block_number: number, end_block_number: number) => {
 // pool.end()
 
 // start
-nextBlock(block_number, block_number + PRE_BLOCK_NUMBER)
+const main = async () => {
+    let block_number = await get_indexer_last_block()
+    nextBlock(block_number, block_number + PRE_BLOCK_NUMBER)
+}
+main()
