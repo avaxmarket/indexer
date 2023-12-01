@@ -4,3 +4,4 @@ db.md
 node_modules
 .env
 .avb
+nohup.out
