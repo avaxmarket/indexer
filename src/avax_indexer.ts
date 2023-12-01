@@ -28,7 +28,7 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
     // TODO catch
     const { amt } = await get_avax_insc_tick_info()
     let total_mint = BigNumber(amt)
-    console.log("total_mint::", amt)
+    // console.log("total_mint::", amt)
     try {
         for await (const row of able_db_result) {
             const prefix_hex_len = AVAX_PROTOCOL_PREFIX_HEX.length
@@ -194,7 +194,7 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
 // start
 const main = async () => {
     let block_number = await get_indexer_last_block()
-    console.log("start block number::", block_number)
+    // console.log("start block number::", block_number)
     await nextBlock(block_number, block_number + PRE_BLOCK_NUMBER)
     // let block_number = 38094867
     // await nextBlock(block_number, block_number)
