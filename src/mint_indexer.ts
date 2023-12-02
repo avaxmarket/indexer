@@ -65,10 +65,10 @@ const nextBlock = async (start_block_number: number, end_block_number: number) =
                         }
                     }
                 }
-                if (total_mint.isGreaterThan(0)) {
-                    pool.execute(`UPDATE avax_tick SET amt = ? WHERE tick = ?`, [total_mint.toString(), AVAL_TICK])
-                }
             }
+        }
+        if (total_mint.isGreaterThan(0)) {
+            pool.execute(`UPDATE avax_tick SET amt = ? WHERE tick = ?`, [total_mint.toString(), AVAL_TICK])
         }
         // commit success
         await conn.commit()
