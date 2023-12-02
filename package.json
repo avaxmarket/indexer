@@ -6,7 +6,8 @@
   },
   "scripts": {
     "test": "ts-node tests/index.ts",
-    "start": "ts-node src/avax_indexer.ts"
+    "start": "ts-node src/avax_indexer.ts",
+    "start-mint": "ts-node src/mint_indexer.ts"
   },
   "devDependencies": {
     "@types/mysql2": "github:types/mysql2",
