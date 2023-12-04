@@ -10,15 +10,26 @@ import { envmap } from "../src/utils/envmap"
 /**
 data:,{"p":"asc-20","op":"transfer","tick":"aval","vin":[{"txid":"0x678a","vout":"0"}],"vout":[{"amt":"2","scriptPubKey":{"addr":"0xbob"}}]}
  */
-const utxo =  {
-    txid: '0x678a',
-    value: "1000",
-    owner: "0xalice",
-    index: '0',
-    confirmed: 0,
-    tick: AVAL_TICK,
-    vin_hash: ""
-}
+const utxos =  [
+    {
+        txid: '0x00',
+        value: "100000000",
+        owner: "0xxx",
+        index: '0',
+        confirmed: 0,
+        tick: AVAL_TICK,
+        vin_hash: ""
+    },
+    {
+        txid: '0x00',
+        value: "100000000",
+        owner: "0xxx",
+        index: '0',
+        confirmed: 0,
+        tick: AVAL_TICK,
+        vin_hash: ""
+    },
+]
 
 
 const main = async (
@@ -31,9 +42,9 @@ const main = async (
                     transactions: [
                         {
                             transactionIndex: '0x1',
-                            from: '0xalice',
+                            from: '0xxx',
                             to: ZERO_ADDRESS,
-                            input: '0x0a646174613a2c7b2270223a226173632d3230222c226f70223a227472616e73666572222c227469636b223a226176616c222c2276696e223a5b7b2274786964223a223078303030222c22766f7574223a2230227d5d2c22766f7574223a5b7b22616d74223a2232222c227363726970745075624b6579223a7b2261646472223a223078303030227d7d5d7d',
+                            input: '',
                             hash: '0xff0123'
                         }
                     ]
@@ -84,47 +95,54 @@ const main = async (
                             transaction.to === ZERO_ADDRESS
                         ) {
                             let isTransfer = true
-                            let inputValue = new BigNumber(0)
-                            let outputValue = new BigNumber(0)
+                            let input_value = new BigNumber(0)
+                            let output_value = new BigNumber(0)
                             for await (const input of inscription.vin) {
-                                
+                                const utxo = await get_avax_insc_utxo_info(input.txid, parseInt(input.vout)) 
                                 if (utxo.owner.toLocaleLowerCase() !== from) {
                                     isTransfer = false
                                     continue
                                 }
-                                inputValue.plus(
+                                input_value = input_value.plus(
                                     new BigNumber(utxo.value).multipliedBy(DEC)
                                 )
                             }
                             for (const output of inscription.vout) {
-                                outputValue.plus(
+                                if(BigNumber(output.amt).isLessThan(0)){
+                                    isTransfer = false
+                                }
+                                output_value = output_value.plus(
                                     new BigNumber(output.amt).multipliedBy(DEC)
                                 )
                             }
-                            if (inputValue.isLessThan(outputValue)) {
+                            if (input_value.isLessThan(output_value)) {
                                 isTransfer = false
                             }
-                            const excess_funds = inputValue.minus(outputValue).dividedBy(DEC).toNumber()
+                            const excess_funds = input_value.minus(output_value).dividedBy(DEC).toNumber()
                             if (
                                 inscription.vout.length <= ASC20_V1_TRANSFER_MAX &&
-                                isTransfer
+                                isTransfer &&
+                                input_value.isGreaterThan(0)
                             ) {
                                 let run_vout = inscription.vout
+                                console.log('input_value---::', input_value.toNumber())
+                                console.log('output_value---::', output_value.toNumber())
+                                console.log('excess_funds---::', excess_funds)
                                 if (excess_funds > 0) {
                                     run_vout = [...run_vout, {
                                         amt: excess_funds.toString(),
                                         scriptPubKey: {
-                                            addr: transaction.from
+                                            addr: transaction.from.toLocaleLowerCase()
                                         }
                                     }]
                                 }
                                 let new_vout_index = 0
                                 for await (const input of inscription.vin) {
-                                    execute(`UPDATE ${envmap.db.table.utxo} SET confirmed = ? WHERE txid = ? AND index = ?`, [1/* true */, input.txid, input.vout])
+                                    execute(`UPDATE ${envmap.db.table.utxo} SET confirmed = ? WHERE txid = ? AND \`index\` = ?`, [1/* true */, input.txid, input.vout])
                                 }
                                 for await (const output of run_vout) {
                                     execute(`INSERT IGNORE INTO ${envmap.db.table.utxo} (
-                                                        txid, value, owner,
+                                                        txid, \`value\`, \`owner\`,
                                                         \`index\`, confirmed, tick,
                                                         block_number
                                                     ) VALUES (
@@ -132,7 +150,7 @@ const main = async (
                                                         ?, ?, ?,
                                                         ?
                                                     )`, [
-                                        transaction.hash, output.amt, output.scriptPubKey.addr,
+                                        transaction.hash, output.amt, output.scriptPubKey.addr.toLocaleLowerCase(),
                                         new_vout_index, 0/* false */, AVAL_TICK,
                                         current_block_number
                                     ])
@@ -150,6 +168,9 @@ const main = async (
     await new Promise((ok) => setTimeout(ok, 3e3))
 }
 
+async function get_avax_insc_utxo_info(txid: string, index: number) {
+    return utxos.find(e => e.txid === txid && index === Number(e.index))
+}
 function execute(sql: string, params: any[]) {
     console.log(sql, params.join(','))
 }
