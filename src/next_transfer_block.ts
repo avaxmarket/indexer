@@ -26,6 +26,11 @@ const main = async (
 
         const able_db_result = db_rustlt.slice(0, block_last_index + 1)
 
+        const able_db_result_block_number_arr =  able_db_result.map((row) => row.block_data.result.number).map((e) => parseInt(e, 16))
+        if(able_db_result_block_number_arr?.[0] !== start_block_number){
+            await new Promise((ok) => setTimeout(ok, 6e3))
+            continue
+        }
         try {
             await conn.beginTransaction()
             for await (const row of able_db_result) {
