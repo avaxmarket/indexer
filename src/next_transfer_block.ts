@@ -99,11 +99,11 @@ const main = async (
                                     }
                                     let new_vout_index = 0
                                     for await (const input of inscription.vin) {
-                                        pool.execute(`UPDATE ${envmap.db.table.utxo} SET confirmed = ? WHERE txid = ? AND \`index\` = ?`, [1/* true */, input.txid, input.vout])
+                                        await pool.execute(`UPDATE ${envmap.db.table.utxo} SET confirmed = ? WHERE txid = ? AND \`index\` = ?`, [1/* true */, input.txid, input.vout])
                                         console.log(`UPDATE ${envmap.db.table.utxo}`, [1/* true */, input.txid, input.vout].join(','))
                                     }
                                     for await (const output of run_vout) {
-                                        pool.execute(`INSERT IGNORE INTO ${envmap.db.table.utxo} (
+                                        await pool.execute(`INSERT IGNORE INTO ${envmap.db.table.utxo} (
                                                         txid, \`value\`, \`owner\`,
                                                         \`index\`, confirmed, tick,
                                                         block_number
