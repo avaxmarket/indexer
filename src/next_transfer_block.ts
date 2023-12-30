@@ -55,7 +55,11 @@ const main = async (
                         if (inscription?.p === AVAX_PROTOCOL) {
                             if (
                                 inscription.op === 'transfer' &&
-                                inscription.tick === AVAL_TICK 
+                                inscription.tick === AVAL_TICK &&
+                                inscription?.vin &&
+                                inscription?.vout &&
+                                inscription?.vin?.length > 0 && 
+                                inscription?.vout?.length > 0
                                 // && transaction.to === ZERO_ADDRESS
                             ) {
                                 let isTransfer = true
