@@ -65,7 +65,12 @@ const main = async (
                                 let isTransfer = true
                                 let input_value = new BigNumber(0)
                                 let output_value = new BigNumber(0)
+                                let spent_utxo_flag_list: string[] = []
                                 for await (const input of inscription.vin) {
+                                    if(spent_utxo_flag_list.includes(utxo_id)){
+                                        isTransfer = false
+                                        continue
+                                    }
                                     const utxo = await get_avax_insc_utxo_info(input.txid, parseInt(input.vout))
                                     if (utxo?.owner?.toLocaleLowerCase() !== from) {
                                         isTransfer = false
